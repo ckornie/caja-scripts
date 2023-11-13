@@ -21,4 +21,4 @@ Uses [Trim Pictures](https://github.com/krithin/trimpictures) to automatically t
 Takes one or more images, runs optical character recognition using [Tesseract](https://github.com/tesseract-ocr/tesseract), and consolidates the images into a single document using filename for page order.
 
 ## fly
-The fly script will reconsolidate video files recorded from a [Fly6 Original](https://cycliq.com/support/fly6-original/). The files are split into 10 minute segments. The file and directory naming scheme allows you to infer the date, timestamp, and segment. These files are then recombined into a single file using the ISO 8601 format.
+The fly script will reconsolidate video files recorded from a [Fly6 Original](https://cycliq.com/support/fly6-original/). The files are split into 10 minute segments with 2 seconds of overlapping footage between files. The file and directory naming scheme allows you to infer the date, timestamp, and segment. These files are then recombined into a single file using the ISO 8601 format.
