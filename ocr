@@ -1,0 +1,21 @@
+#!/bin/bash
+
+for path in "$@"; do
+  result=$(basename "${path}")
+  listing="$(mktemp /tmp/ocr.XXXXXX)"
+
+  if [ -d "${path}" ]; then
+    for file in "${path}"/* ; do
+      echo "${file}" >> "${listing}"
+    done
+  else
+    result="${result%.*}"
+    echo "${path}" >> "${listing}"
+  fi
+
+  destination="$(mktemp -u)"
+  tesseract --dpi 300 "${listing}" "${destination}" pdf
+  mv "${destination}.pdf" ./"${result}.pdf"
+  rm "${listing}"
+done
+

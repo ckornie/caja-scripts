@@ -16,3 +16,6 @@ Flips a single image.
 
 ## unzip
 Unzips one or more zip archives to the current directory.
+
+## ocr
+Takes one or more images, runs optical character recognition using [Tesseract](https://github.com/tesseract-ocr/tesseract), and consolidates the images into a single document using filename for page order.
