@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Originally from: https://github.com/krithin/trimpictures 
 # Compiled to a binary called '.img-trim' with Nuitka.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ffmpeg="/usr/bin/ffmpeg -hide_banner -loglevel error"
 ffprobe="/usr/bin/ffprobe"
