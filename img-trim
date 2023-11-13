@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Originally from: https://github.com/krithin/trimpictures 
+# Compiled to a binary called '.img-trim' with Nuitka.
+
+directory=$(dirname "${0}")
+trim="${directory%%/}/.img-trim"
+
+for original in "$@"; do
+  trimmed="${original%.*}"
+
+  "${trim}" --quiet "${original}" "${trimmed}_TRIMMED.jpg"
+done
