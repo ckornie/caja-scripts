@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for path in "$@"; do
+  if [ -f "${path}" ]; then
+    unzip "${path}"
+  fi
+done

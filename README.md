@@ -13,3 +13,6 @@ Rotates a single image counter clockwise.
 
 ## img-flip
 Flips a single image.
+
+## unzip
+Unzips one or more zip archives to the current directory.
