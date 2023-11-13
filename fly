@@ -24,8 +24,7 @@ if [[ "${duration}" -eq 600 ]]; then
 
   echo "file '${directory%%/}/${prefix}_${sequence}.avi'" > "${directory%%/}/${prefix}.txt"
 
-  ((sequence++))
-  printf -v sequence "%04d" ${sequence}
+  printf -v sequence %04d "$((10#${sequence} + 1))"
 
   hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
   minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
@@ -46,8 +45,7 @@ if [[ "${duration}" -eq 600 ]]; then
 
     echo "file '${directory%%/}/${prefix}_${sequence}.avi'" >> "${directory%%/}/${prefix}.txt"
 
-    ((sequence++))
-    printf -v sequence "%04d" ${sequence}
+    printf -v sequence %04d "$((10#${sequence} + 1))"
 
     hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
     minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
