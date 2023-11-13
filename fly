@@ -3,17 +3,14 @@
 ffmpeg="/usr/bin/ffmpeg -hide_banner -loglevel error"
 ffprobe="/usr/bin/ffprobe"
 
-path="${1}"
-
+path="$(realpath "${1}")"
 directory="$(dirname "${path}")"
+file="${path##*/}"
+sequence="${file:(-8):4}"
 date="$(basename "${directory}")"
 year="$(date +'%Y')"
 month="${date:(-4):2}"
 day="${date:(-2)}"
-
-file="${path##*/}"
-sequence="${file:(-8):4}"
-
 hour="${file:0:2}"
 minute="${file:2:2}"
 prefix="${year}${month}${day}T${hour}${minute}00Z"
