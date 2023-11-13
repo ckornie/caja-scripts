@@ -3,77 +3,73 @@
 ffmpeg="/usr/bin/ffmpeg -hide_banner -loglevel error"
 ffprobe="/usr/bin/ffprobe"
 
+path="${1}"
+
+directory="$(dirname "${path}")"
+date="$(basename "${directory}")"
 year="$(date +'%Y')"
+month="${date:(-4):2}"
+day="${date:(-2)}"
 
-for path in "${@}"; do
-  directory="$(dirname "${path}")"
-  date="$(basename "${directory}")"
-  month="${date:(-4):2}"
-  day="${date:(-2)}"
+file="${path##*/}"
+sequence="${file:(-8):4}"
 
-  file="${path##*/}"
-  sequence="${file:(-8):4}"
+hour="${file:0:2}"
+minute="${file:2:2}"
+prefix="${year}${month}${day}T${hour}${minute}00Z"
 
-  if [[ "${sequence}" -eq 1 ]]; then
-    hour="${file:0:2}"
-    minute="${file:2:2}"
-    prefix="${year}${month}${day}T${hour}${minute}00Z"
-    
+duration=$(${ffprobe} -i "${path}" -show_entries format=duration -v quiet -of csv="p=0")
+duration=${duration%.*}
+
+if [[ "${duration}" -eq 600 ]]; then
+  echo "Trimming ${prefix}_${sequence}.avi from ${path}"
+  ${ffmpeg} -ss 0:00 -i "${path}" -t 9:59 -c copy "${directory%%/}/${prefix}_${sequence}.avi"
+
+  echo "file '${directory%%/}/${prefix}_${sequence}.avi'" > "${directory%%/}/${prefix}.txt"
+
+  ((sequence++))
+  printf -v sequence "%04d" ${sequence}
+
+  hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
+  minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
+  file="${hour}${minute}${sequence}.AVI"
+  path="${directory%%/}/${file}"
+
+  while [ -f "${path}" ]; do
     duration=$(${ffprobe} -i "${path}" -show_entries format=duration -v quiet -of csv="p=0")
     duration=${duration%.*}
 
     if [[ "${duration}" -eq 600 ]]; then
       echo "Trimming ${prefix}_${sequence}.avi from ${path}"
       ${ffmpeg} -ss 0:00 -i "${path}" -t 9:59 -c copy "${directory%%/}/${prefix}_${sequence}.avi"
-
-      echo "file '${directory%%/}/${prefix}_${sequence}.avi'" > "${directory%%/}/${prefix}.txt"
-
-      ((sequence++))
-      printf -v sequence "%04d" ${sequence}
-
-      hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
-      minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
-      file="${hour}${minute}${sequence}.AVI"
-      path="${directory%%/}/${file}"
-
-      while [ -f "${path}" ]; do
-        duration=$(${ffprobe} -i "${path}" -show_entries format=duration -v quiet -of csv="p=0")
-        duration=${duration%.*}
-
-        if [[ "${duration}" -eq 600 ]]; then
-          echo "Trimming ${prefix}_${sequence}.avi from ${path}"
-          ${ffmpeg} -ss 0:00 -i "${path}" -t 9:59 -c copy "${directory%%/}/${prefix}_${sequence}.avi"
-        else
-          echo "Copying ${prefix}_${sequence}.avi from ${path}"
-          cp "${path}" "${directory%%/}/${prefix}_${sequence}.avi"
-        fi
-
-        echo "file '${directory%%/}/${prefix}_${sequence}.avi'" >> "${directory%%/}/${prefix}.txt"
-
-        ((sequence++))
-        printf -v sequence "%04d" ${sequence}
-
-        hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
-        minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
-        file="${hour}${minute}${sequence}.AVI"
-        path="${directory%%/}/${file}"
-      done
-
-      ${ffmpeg} -f concat -safe 0 -i "${directory%%/}/${prefix}.txt" -c copy "${directory%%/}/${prefix}.avi"
-      
-      while IFS= read -r line
-      do
-        file="${line#"file '"}"
-        file="${file%\'}"
-        echo "Removing ${file}"
-        rm "${file}"
-      done < "${directory%%/}/${prefix}.txt"
-
-      rm "${directory%%/}/${prefix}.txt"
     else
-      echo "Copying ${prefix}.avi from ${path}"
-      cp "${path}" "${directory%%/}/${prefix}.avi"
+      echo "Copying ${prefix}_${sequence}.avi from ${path}"
+      cp "${path}" "${directory%%/}/${prefix}_${sequence}.avi"
     fi
 
-  fi
-done
+    echo "file '${directory%%/}/${prefix}_${sequence}.avi'" >> "${directory%%/}/${prefix}.txt"
+
+    ((sequence++))
+    printf -v sequence "%04d" ${sequence}
+
+    hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
+    minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
+    file="${hour}${minute}${sequence}.AVI"
+    path="${directory%%/}/${file}"
+  done
+
+  ${ffmpeg} -f concat -safe 0 -i "${directory%%/}/${prefix}.txt" -c copy "${directory%%/}/${prefix}.avi"
+  
+  while IFS= read -r line
+  do
+    file="${line#"file '"}"
+    file="${file%\'}"
+    echo "Removing ${file}"
+    rm "${file}"
+  done < "${directory%%/}/${prefix}.txt"
+
+  rm "${directory%%/}/${prefix}.txt"
+else
+  echo "Copying ${prefix}.avi from ${path}"
+  cp "${path}" "${directory%%/}/${prefix}.avi"
+fi
