@@ -3,68 +3,100 @@
 ffmpeg="/usr/bin/ffmpeg -hide_banner -loglevel error"
 ffprobe="/usr/bin/ffprobe"
 
-path="$(realpath "${1}")"
-directory="$(dirname "${path}")"
-file="${path##*/}"
-sequence="${file:(-8):4}"
-date="$(basename "${directory}")"
-year="$(date +'%Y')"
-month="${date:(-4):2}"
-day="${date:(-2)}"
-hour="${file:0:2}"
-minute="${file:2:2}"
-prefix="${year}${month}${day}T${hour}${minute}00Z"
+get_duration(){
+  local duration
+  duration=$(${ffprobe} -i "${1}" -show_entries format=duration -v quiet -of csv="p=0")
+  printf %.0f "${duration}"
+}
 
-duration=$(${ffprobe} -i "${path}" -show_entries format=duration -v quiet -of csv="p=0")
-duration=${duration%.*}
+get_first_file(){
+  local path
+  local next
+  local sequence=9999
+  local argument
 
-if [[ "${duration}" -eq 600 ]]; then
-  echo "Trimming ${prefix}_${sequence}.avi from ${path}"
-  ${ffmpeg} -ss 0:00 -i "${path}" -t 9:59 -c copy "${directory%%/}/${prefix}_${sequence}.avi"
+  for argument in "${@}"
+  do
+    file="${argument##*/}"
+    printf -v next %d "$((10#${file:(-8):4}))"
+    if [ "${next}" -lt "${sequence}" ]; then
+      sequence=${next}
+      path="$(realpath "${argument}")"
+    fi
+  done
 
-  echo "file '${directory%%/}/${prefix}_${sequence}.avi'" > "${directory%%/}/${prefix}.txt"
+  echo "${path}"
+}
 
-  printf -v sequence %04d "$((10#${sequence} + 1))"
+get_next_file(){
+  local hour="${1}"
+  local minute="${2}"
+  local segment="${3}"
 
   hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
   minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
-  file="${hour}${minute}${sequence}.AVI"
-  path="${directory%%/}/${file}"
+  echo "${hour}${minute}$(printf %04d "$((segment+1))").AVI"
+}
 
-  while [ -f "${path}" ]; do
-    duration=$(${ffprobe} -i "${path}" -show_entries format=duration -v quiet -of csv="p=0")
-    duration=${duration%.*}
+get_timestamp(){
+  local directory="${1}"
+  local file="${2}"
+  month="${directory:(-4):2}"
+  day="${directory:(-2)}"
+  hour="${file:0:2}"
+  minute="${file:2:2}"
+  echo "$(date +'%Y')${month}${day}T${hour}${minute}00Z"
+}
 
-    if [[ "${duration}" -eq 600 ]]; then
-      echo "Trimming ${prefix}_${sequence}.avi from ${path}"
-      ${ffmpeg} -ss 0:00 -i "${path}" -t 9:59 -c copy "${directory%%/}/${prefix}_${sequence}.avi"
-    else
-      echo "Copying ${prefix}_${sequence}.avi from ${path}"
-      cp "${path}" "${directory%%/}/${prefix}_${sequence}.avi"
-    fi
+do_trim(){
+  local directory="${1}"
+  local source="${2}"
+  local destination="${3}"
+  local listing="${4}"
+  echo "Trimming ${source} to ${destination}"
+  ${ffmpeg} -ss 0:00 -i "${directory%%/}/${source}" -t 9:59 -c copy "${directory%%/}/${destination}"
+  echo "file '${directory%%/}/${destination}'" >> "${directory%%/}/${listing}"
+}
 
-    echo "file '${directory%%/}/${prefix}_${sequence}.avi'" >> "${directory%%/}/${prefix}.txt"
+do_copy(){
+  local directory="${1}"
+  local source="${2}"
+  local destination="${3}"
+  local listing="${4}"
+  echo "Copying ${source} to ${destination}"
+  ${ffmpeg} -ss 0:00 -i "${directory%%/}/${source}" -t 9:59 -c copy "${directory%%/}/${destination}"
+  echo "file '${directory%%/}/${destination}'" >> "${directory%%/}/${listing}"
+}
 
-    printf -v sequence %04d "$((10#${sequence} + 1))"
+path=$(get_first_file "${@}")
+directory="$(dirname "${path}")"
+file="${path##*/}"
+timestamp=$(get_timestamp "${directory}" "${file}")
 
-    hour=$(date -d "${hour}:${minute} 10 minutes" +'%H')
-    minute=$(date -d "${hour}:${minute} 10 minutes" +'%M')
-    file="${hour}${minute}${sequence}.AVI"
-    path="${directory%%/}/${file}"
-  done
+while [ -f "${path}" ] && [ "$(get_duration "${path}")" -eq 600 ]; do
+  hour="${file:0:2}"
+  minute="${file:2:2}"
+  segment=$(printf %d "$((10#${file:(-8):4}))")
 
-  ${ffmpeg} -f concat -safe 0 -i "${directory%%/}/${prefix}.txt" -c copy "${directory%%/}/${prefix}.avi"
-  
-  while IFS= read -r line
-  do
-    file="${line#"file '"}"
-    file="${file%\'}"
-    echo "Removing ${file}"
-    rm "${file}"
-  done < "${directory%%/}/${prefix}.txt"
+  do_trim "${directory}" "${file}" "${timestamp}_$(printf %04d "${segment}").avi" "${timestamp}.txt"
 
-  rm "${directory%%/}/${prefix}.txt"
-else
-  echo "Copying ${prefix}.avi from ${path}"
-  cp "${path}" "${directory%%/}/${prefix}.avi"
+  path="${directory%%/}/$(get_next_file "${hour}" "${minute}" "${segment}")"
+  directory="$(dirname "${path}")"
+  file="${path##*/}"
+done
+
+if [ -f "${path}" ]; then
+  segment=$(printf %d "$((10#${file:(-8):4}))")
+  do_copy "${directory}" "${file}" "${timestamp}_$(printf %04d "${segment}").avi" "${timestamp}.txt"
 fi
+
+${ffmpeg} -f concat -safe 0 -i "${directory%%/}/${timestamp}.txt" -c copy "${directory%%/}/${timestamp}.avi"
+
+while IFS= read -r line
+do
+  file="${line#"file '"}"
+  file="${file%\'}"
+  rm "${file}"
+done < "${directory%%/}/${timestamp}.txt"
+
+rm "${directory%%/}/${timestamp}.txt"
