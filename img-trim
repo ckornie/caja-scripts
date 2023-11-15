@@ -24,8 +24,6 @@ for source in "$@"; do
     rm "${full_sample}"
 
     deskewed=$(mktemp /tmp/trim.deskewed.XXXXXX)
-    destination=$(mktemp "${source%.*}.XXXXXX.jpg")
-
     magick "${source}" -background "${average_bg}" -fuzz 10% -deskew 40% +repage "${deskewed}"
 
     IFS=" " read -r width height x y <<< "$(magick "${deskewed}" -virtual-pixel edge -blur 0x3 -fuzz 10% -trim -format '%w %h %X %Y' info:)"
@@ -34,8 +32,10 @@ for source in "$@"; do
     x="$((x-(padding/2)))"
     y="$((y-0))"
     dimensions="${width}x${height}+${x}+${y}"
-
+    
+    destination=$(mktemp "${source%.*}.XXXXXX.jpg")
     magick "${deskewed}" -crop "${dimensions}" +repage "${destination}"
+
     rm "${deskewed}"
   fi
 done
