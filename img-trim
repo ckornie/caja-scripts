@@ -2,29 +2,29 @@
 
 padding=20
 
-for source in "$@"; do
+get_bg_colour() {
+  local samples=("NorthWest" "NorthEast" "SouthWest" "SouthEast")
+  local red=0
+  local green=0
+  local blue=0
+  local source="${1}"
+  for sample in "${samples[@]}"; do
+    local r
+    local g
+    local b
+    IFS=" " read -r r g b <<< "$(convert "${source}" -gravity "${sample}" -crop 5x5+0+0 -format "%[fx:int(255*r+.5)] %[fx:int(255*g+.5)] %[fx:int(255*b+.5)]" info:-)"
+    red="$((red+r))"
+    green="$((green+g))"
+    blue="$((blue+b))"
+  done
+
+  echo "rgb\($((red/4)),$((green/4)),$((blue/4))\)"
+}
+
+for source in "${@}"; do
   if [ -f "${source}" ]; then
-    nw_sample=$(mktemp /tmp/trim.nw.XXXXXX)
-    ne_sample=$(mktemp /tmp/trim.ne.XXXXXX)
-    sw_sample=$(mktemp /tmp/trim.sw.XXXXXX)
-    se_sample=$(mktemp /tmp/trim.se.XXXXXX)
-    full_sample=$(mktemp /tmp/trim.full.XXXXXX)
-
-    convert "${source}" -gravity NorthWest -crop 5x5+0+0 "${nw_sample}"
-    convert "${source}" -gravity NorthEast -crop 5x5+0+0 "${ne_sample}"
-    convert "${source}" -gravity SouthWest -crop 5x5+0+0 "${sw_sample}"
-    convert "${source}" -gravity SouthEast -crop 5x5+0+0 "${se_sample}"
-    convert "${nw_sample}" "${ne_sample}" "${sw_sample}" "${se_sample}" +append "${full_sample}"
-    average_bg=$(convert "${full_sample}" -resize 1x1 txt:- | tail -1 | cut -d' ' -f4)
-
-    rm "${nw_sample}"
-    rm "${ne_sample}"
-    rm "${sw_sample}"
-    rm "${se_sample}"
-    rm "${full_sample}"
-
     deskewed=$(mktemp /tmp/trim.deskewed.XXXXXX)
-    magick "${source}" -background "${average_bg}" -fuzz 10% -deskew 40% +repage "${deskewed}"
+    magick "${source}" -background "$(get_bg_colour "${source}")" -fuzz 10% -deskew 40% +repage "${deskewed}"
 
     IFS=" " read -r width height x y <<< "$(magick "${deskewed}" -virtual-pixel edge -blur 0x3 -fuzz 10% -trim -format '%w %h %X %Y' info:)"
     width="$((width+padding))"
