@@ -1,29 +1,41 @@
 #!/usr/bin/env bash
 
+padding=20
+
 for source in "$@"; do
-  nw_sample=$(mktemp /tmp/trim.nw.XXXXXX)
-  ne_sample=$(mktemp /tmp/trim.ne.XXXXXX)
-  sw_sample=$(mktemp /tmp/trim.sw.XXXXXX)
-  se_sample=$(mktemp /tmp/trim.se.XXXXXX)
-  full_sample=$(mktemp /tmp/trim.full.XXXXXX)
+  if [ -f "${source}" ]; then
+    nw_sample=$(mktemp /tmp/trim.nw.XXXXXX)
+    ne_sample=$(mktemp /tmp/trim.ne.XXXXXX)
+    sw_sample=$(mktemp /tmp/trim.sw.XXXXXX)
+    se_sample=$(mktemp /tmp/trim.se.XXXXXX)
+    full_sample=$(mktemp /tmp/trim.full.XXXXXX)
 
-  convert "${source}" -gravity NorthWest -crop 5x5+0+0 "${nw_sample}"
-  convert "${source}" -gravity NorthEast -crop 5x5+0+0 "${ne_sample}"
-  convert "${source}" -gravity SouthWest -crop 5x5+0+0 "${sw_sample}"
-  convert "${source}" -gravity SouthEast -crop 5x5+0+0 "${se_sample}"
-  convert "${nw_sample}" "${ne_sample}" "${sw_sample}" "${se_sample}" +append "${full_sample}"
-  average_bg=$(convert "${full_sample}" -resize 1x1 txt:- | tail -1 | cut -d' ' -f4)
+    convert "${source}" -gravity NorthWest -crop 5x5+0+0 "${nw_sample}"
+    convert "${source}" -gravity NorthEast -crop 5x5+0+0 "${ne_sample}"
+    convert "${source}" -gravity SouthWest -crop 5x5+0+0 "${sw_sample}"
+    convert "${source}" -gravity SouthEast -crop 5x5+0+0 "${se_sample}"
+    convert "${nw_sample}" "${ne_sample}" "${sw_sample}" "${se_sample}" +append "${full_sample}"
+    average_bg=$(convert "${full_sample}" -resize 1x1 txt:- | tail -1 | cut -d' ' -f4)
 
-  rm "${nw_sample}"
-  rm "${ne_sample}"
-  rm "${sw_sample}"
-  rm "${se_sample}"
-  rm "${full_sample}"
+    rm "${nw_sample}"
+    rm "${ne_sample}"
+    rm "${sw_sample}"
+    rm "${se_sample}"
+    rm "${full_sample}"
 
-  deskewed=$(mktemp /tmp/trim.deskewed.XXXXXX)
-  destination=$(mktemp "${source%.*}.XXXXXX.jpg")
+    deskewed=$(mktemp /tmp/trim.deskewed.XXXXXX)
+    destination=$(mktemp "${source%.*}.XXXXXX.jpg")
 
-  magick "${source}" -background "${average_bg}" -fuzz 10% -deskew 40% +repage "${deskewed}"
-  dimensions=$(magick "${deskewed}" -virtual-pixel edge -blur 0x3 -fuzz 10% -trim -format '%wx%h%O' info:)
-  magick "${deskewed}" -crop "${dimensions}" +repage "${destination}"
+    magick "${source}" -background "${average_bg}" -fuzz 10% -deskew 40% +repage "${deskewed}"
+
+    IFS=" " read -r width height x y <<< "$(magick "${deskewed}" -virtual-pixel edge -blur 0x3 -fuzz 10% -trim -format '%w %h %X %Y' info:)"
+    width="$((width+padding))"
+    height="$((height+0))"
+    x="$((x-(padding/2)))"
+    y="$((y-0))"
+    dimensions="${width}x${height}+${x}+${y}"
+
+    magick "${deskewed}" -crop "${dimensions}" +repage "${destination}"
+    rm "${deskewed}"
+  fi
 done
