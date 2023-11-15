@@ -1,13 +1,26 @@
 #!/usr/bin/env bash
 
-# Originally from: https://github.com/krithin/trimpictures 
-# Compiled to a binary called '.img-trim' with Nuitka.
-
-directory=$(dirname "${0}")
-trim="${directory%%/}/.img-trim"
-
 for original in "$@"; do
   trimmed="${original%.*}"
 
-  "${trim}" --quiet "${original}" "${trimmed}_TRIMMED.jpg"
+  nw_sample=$(mktemp /tmp/trim.nw.XXXXXX)
+  ne_sample=$(mktemp /tmp/trim.ne.XXXXXX)
+  sw_sample=$(mktemp /tmp/trim.sw.XXXXXX)
+  se_sample=$(mktemp /tmp/trim.se.XXXXXX)
+  full_sample=$(mktemp /tmp/trim.full.XXXXXX)
+  
+  convert "${original}" -gravity NorthWest -crop 5x5+0+0 "${nw_sample}"
+  convert "${original}" -gravity NorthEast -crop 5x5+0+0 "${ne_sample}"
+  convert "${original}" -gravity SouthWest -crop 5x5+0+0 "${sw_sample}"
+  convert "${original}" -gravity SouthEast -crop 5x5+0+0 "${se_sample}"
+  convert "${nw_sample}" "${ne_sample}" "${sw_sample}" "${se_sample}" +append "${full_sample}"
+  average_bg=$(convert "${full_sample}" -resize 1x1 txt:- | tail -1 | cut -d' ' -f4)
+
+  rm "${nw_sample}"
+  rm "${ne_sample}"
+  rm "${sw_sample}"
+  rm "${se_sample}"
+  rm "${full_sample}"
+
+  magick "${original}" -background "${average_bg}" -fuzz 10% -deskew 40% -trim +repage "${trimmed}_TRIMMED.jpg"
 done
