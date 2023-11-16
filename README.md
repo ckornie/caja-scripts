@@ -1,5 +1,5 @@
 # Introduction
-This is a collection of scripts for the Caja file manager. These scripts can be installed to `${XDG_CONFIG_HOME}/caja/scripts`. They can be run on files or directories when right-clicked.
+This is a collection of scripts for the [Caja](https://github.com/mate-desktop/caja) file manager. These scripts can be installed to `${XDG_CONFIG_HOME}/caja/scripts`. They can be run on files or directories when right-clicked.
 
 # Scripts
 ## unzip
@@ -15,7 +15,7 @@ Rotates a single image counter clockwise.
 Flips a single image.
 
 ## img-trim
-Uses [Trim Pictures](https://github.com/krithin/trimpictures) to automatically trim and deskew scanned images. The Python script should be compiled to a single binary called '.img-trim' using Nuitka.
+Uses [ImageMagick](https://imagemagick.org/index.php) to automatically trim and deskew scanned images.
 
 ## ocr
 Takes one or more images, runs optical character recognition using [Tesseract](https://github.com/tesseract-ocr/tesseract), and consolidates the images into a single document using filename for page order.
