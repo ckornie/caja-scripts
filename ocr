@@ -2,10 +2,18 @@
 
 for path in "$@"; do
   result=$(basename "${path}")
-  listing="$(mktemp /tmp/ocr.XXXXXX)"
+  temporary="$(mktemp -d /tmp/ocr.XXXXXX)"
+  listing="${temporary%%/}/listing.txt"
+
+  if [ "$(file "${path}" --mime-type -b)" = "application/zip" ]; then
+    result="${result%.*}"
+    mkdir -p "${temporary%%/}/extraction"
+    unzip "${path}" -d "${temporary%%/}/extraction"
+    path="${temporary%%/}/extraction"
+  fi
 
   if [ -d "${path}" ]; then
-    for file in "${path}"/* ; do
+    for file in "${path%%/}"/* ; do
       echo "${file}" >> "${listing}"
     done
   else
@@ -16,6 +24,5 @@ for path in "$@"; do
   destination="$(mktemp -u)"
   tesseract --dpi 300 "${listing}" "${destination}" pdf
   mv "${destination}.pdf" ./"${result}.pdf"
-  rm "${listing}"
+  rm -r "${temporary}"
 done
-
