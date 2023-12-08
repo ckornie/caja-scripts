@@ -54,7 +54,10 @@ do_trim(){
   local destination="${3}"
   local listing="${4}"
   echo "Trimming ${source} to ${destination}"
-  ${ffmpeg} -ss 0:00 -i "${directory%%/}/${source}" -t 9:59 -c copy "${directory%%/}/${destination}"
+
+  local duration="$(get_duration "${directory%%/}/${source}")"
+  local clip="$((duration-1))"
+  ${ffmpeg} -ss 00:00:00 -to "${clip}" -i "${directory%%/}/${source}" -c copy "${directory%%/}/${destination}"
   echo "file '${directory%%/}/${destination}'" >> "${directory%%/}/${listing}"
 }
 
@@ -73,7 +76,7 @@ directory="$(dirname "${path}")"
 file="${path##*/}"
 timestamp=$(get_timestamp "${directory}" "${file}")
 
-while [ -f "${path}" ] && [ "$(get_duration "${path}")" -eq 600 ]; do
+while [ -f "${path}" ] && [ "$(get_duration "${path}")" -ge 600 ]; do
   hour="${file:0:2}"
   minute="${file:2:2}"
   segment=$(printf %d "$((10#${file:(-8):4}))")
